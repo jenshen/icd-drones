@@ -4,39 +4,46 @@ import time
 import socket   #for sockets
 import sys  #for exit
 
+startTime = time.strftime("%H:%M:%S")
+host = '127.0.1.1';
+receivePort = 8000;
+sendPort = 8001;
+
 # First get an instance of the API endpoint
 api = local_connect()
 # Get the connected vehicle (currently only one vehicle can be returned).
 v = api.get_vehicles()[0]
 
-# Get vehicle attributes (state)
 
-
- 
 # create dgram udp socket
 try:
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    receiveSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sendSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 except socket.error:
     print 'Failed to create socket'
     sys.exit()
- 
-host = 'localhost';
-port = 8888;
- 
+
+ # Bind socket to local host and port 
+try:
+    receiveSocket.bind((host, receivePort))
+except socket.error , msg:
+    print 'Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
+    sys.exit()
+    
+
+
 while(1) :
-    data = str(v.location)  
+    # Get vehicle attributes
+    recMavData = str(v.location) + ';' + str(v.attitude)
+ 
     try :
-        #Set the whole string
-        s.sendto(data, (host, port))
-        print "Hello, success"
-         
-        # receive data from client (data, addr)
-        #d = s.recvfrom(1024)
-        #reply = d[0]
-        # addr = d[1]
-         
-        # print 'Server reply : ' + reply
-     
+        d = receiveSocket.recvfrom(1024)
+        receivedData = d[0]
+        print time.strftime("%H:%M:%S"), ' message: ', receivedData
+        sendSocket.sendto(recMavData, (host, sendPort))
+       
     except socket.error, msg:
         print 'Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
         sys.exit()
+    
+    time.sleep(0.05)
