@@ -1,0 +1,43 @@
+		***WORKS***
+		
+raspivid -n -w 1280 -h 720 -b 3000000 -fps 30 -t 0 -o - -vs -rot 180 | gst-launch-1.0 -v fdsrc ! h264parse ! rtph264pay config-interval=10 pt=96 ! udpsink host=192.168.130.1 port=9000
+	
+raspivid -n -w 1920 -h 1080 -b 1000000 -fps 30 -t 0 -o - | \
+gst-launch-1.0 rtpbin name=rtpbin \
+-v fdsrc ! h264parse ! rtph264pay config-interval=10 pt=96 ! rtpbin.send_rtp_sink_0 \
+rtpbin.send_rtp_src_0 ! udpsink port=5000 host=192.168.137.1 \
+rtpbin.send_rtcp_src_0 ! udpsink port=5001 host=192.168.137.1 sync=false async=false \
+udpsrc port=5005 ! rtpbin.recv_rtcp_sink_0
+
+gst-launch-1.0 -v udpsrc port=9000 caps="application/x-rtp" ! rtph264depay ! decodebin ! queue  !  autovideosink sync=f
+gst-launch-1.0 -v udpsrc port=9000 caps="application/x-rtp" ! rtph264depay ! decodebin ! x264enc ! matroskamux ! filesink location=video.mkv
+
+sudo ArduCopter-quad -A udp:192.168.1.101:14550
+sudo ArduCopter-quad -A udp:127.0.0.1:14551
+sudo ArduCopter-quad -A udp:192.168.130.1:14550
+mavproxy.exe --master=192.168.130.1:14550 --out=udp:192.168.130.105:14550
+mavproxy.py --master=192.168.130.1:14550
+
+sim_vehicle.sh -j4 --map --out=udp:192.168.130.1:14550
+output add 192.168.130.105:14550
+param load ..\Tools\autotest\copter_params.parm
+
+mavproxy.py --master=127.0.0.1:14550
+module load droneapi.module.api
+api start droneapi_udp_send_test.py
+
+mavproxy.py --master=127.0.0.1:14550 --aircraft=vwdrone
+
+param set ARMING_CHECK 0 
+//SITL simulates (by default) a vehicle that may not pass the arming check. This change makes the simulated vehicle more forgiving, which allows the examples to arm and run.
+
+roslaunch mavros apm.launch fcu_url:=udp://:14551@ gcs_url:=udp://192.168.1.101:14552@
+
+		***WORKS***
+
+		***WORKS/LAGS***
+		
+gst-launch-1.0 rpicamsrc bitrate=1000000 ! video/x-h264,width=1280,height=720,framerate=30/1,profile=high ! h264parse ! rtph264pay config-interval=10 pt=96 ! udpsink host=192.168.137.1 port=9000
+
+		***WORKS/LAGS***
+
