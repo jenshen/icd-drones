@@ -4,8 +4,9 @@ import time
 import socket   #for sockets
 import sys  # for exit
 
-UDP_IP = "127.0.0.1"
-UDP_PORT = 5005
+host = 'localhost';
+receivePort = 8000;
+sendPort = 8001;
 
 # First get an instance of the API endpoint
 api = local_connect()
@@ -18,20 +19,28 @@ v = api.get_vehicles()[0]
 
 # Create socket + port conenction between drone + GH
 try:
-    recvSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    recvSock.bind((UDP_IP, UDP_PORT))
+    receiveSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    receiveSocket.bind((host, receivePort))
+    sendSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 except socket.error:
     print 'Failed to create receiving socket'
     sys.exit()
 
 # Recognize commands
 while True:
-    data, addr = sock.recvfrom(1024)
-    # Protocol --> DroneApi Call
-    
-	print "Received data:", data
-	processDroneCommand(data)
-
+    try:
+        # Get vehicle attributes
+        recMavData = str(v.location) + ';' + str(v.attitude)
+        #send to GH
+        sendSocket.sendto(recMavData, (host, sendPort))
+        
+        data, addr = receiveSocket.recvfrom(1024)
+        # Protocol --> DroneApi Call
+        print "Received data:", data
+        processDroneCommand(data)
+    except socket.error, msg:
+        print 'Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
+        sys.exit()
 # DRONEAPI_COMMANDS = {
 # 	"TAKEOFF": takeoff()
 # }
