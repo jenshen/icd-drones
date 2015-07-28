@@ -24,7 +24,6 @@ lastMsgTime = 0
 lastMsg = None
 
 
-
 try: # Create socket + port connection between drone + GH
     receiveSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     receiveSocket.bind((host, receivePort))
@@ -69,11 +68,13 @@ def PrintMessage(message = None, args = ''):
         lastMsgTime = time.time()
         lastMsg = message
     
-    
-    
 def Update_vehicle():
     global vehicleState
     global targetLat, targetLon, targetAlt
+
+    # FAIL SAFE - if drone in LOITER, vehicleState = manual
+    if vehicle.mode.name == 'LOITER' and vehicleState != 'manual':
+        vehicleState = 'manual'
 
     if vehicleState == 'ready':
         PrintMessage("Basic pre-arm checks...")
@@ -157,8 +158,11 @@ def Update_vehicle():
         if targetLat != None and targetLon != None and targetAlt != None:
             vehicleState = 'ready'
             PrintMessage("print vehicle state")
-            
 
+    elif vehicleState == 'manual':
+        if vehicle.mode.name != 'LOITER':
+            vehicle.mode    = VehicleMode("LOITER")
+        PrintMessage("print vehicle state")
 
 def processDroneCommand(input):
     elements = input.split(' ')
@@ -191,15 +195,17 @@ def processDroneCommand(input):
                 print time.strftime("%H:%M:%S"), colored.yellow('     target location index = ' + str(sequenceItem))
             else:
                 print time.strftime("%H:%M:%S"), colored.yellow('     Finished sequence.')
+        elif i_command == 'MANUAL':
+            vehicleState = 'manual'
         else:
             print time.strftime("%H:%M:%S"), colored.red('     Invalid command: ' + str(input))  
     
 # MAIN LOOP
 while True:
     try:
-        recMavData = str(vehicle.location) + ';' + str(vehicle.attitude) + ';' + str(vehicle.mode.name)# Get vehicle attributes
-        sendSocket.sendto(recMavData, (host, sendPort)) #send data to Grasshopper
-        #Receive commands from Grasshopper
+        recMavData = str(vehicle.location) + ';' + str(vehicle.attitude) + ';' + str(vehicle.mode.name) # Get vehicle attributes
+        sendSocket.sendto(recMavData, (host, sendPort)) # send data to Grasshopper
+        # Receive commands from Grasshopper
         data, addr = receiveSocket.recvfrom(1024)
         if len(str(data)) > 0:
             print time.strftime("%H:%M:%S"), colored.green(' Received data: ' + str(data))
